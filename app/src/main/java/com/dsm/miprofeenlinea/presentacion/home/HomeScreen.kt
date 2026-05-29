@@ -37,19 +37,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dsm.miprofeenlinea.R
+import com.dsm.miprofeenlinea.ui.theme.DarkText
+import com.dsm.miprofeenlinea.ui.theme.GrayText
+import com.dsm.miprofeenlinea.ui.theme.LightBlue
+import com.dsm.miprofeenlinea.ui.theme.PrimaryBlue
+import com.dsm.miprofeenlinea.ui.theme.SecondaryBlue
+import com.dsm.miprofeenlinea.ui.theme.White
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import java.io.File
 import java.io.FileOutputStream
 import java.util.UUID
-
-// COLORES
-val PrimaryBlue = Color(0xFF2563EB)
-val SecondaryBlue = Color(0xFF1E3A8A)
-val LightBlue = Color(0xFFDBEAFE)
-val White = Color(0xFFFFFFFF)
-val DarkText = Color(0xFF111827)
-val GrayText = Color(0xFF6B7280)
 
 // FUNCION PARA CONVERTIR BITMAP A URI
 fun bitmapToUri(
