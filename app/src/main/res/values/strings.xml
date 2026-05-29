@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">MiProfeEnLinea</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_password_ocultar">Ocultar contraseña</string>
+    <string name="login_password_mostrar">Mostrar contraseña</string>
+    <string name="login_inicio">Iniciar Sesion</string>
+    <string name="login_registro">¿No tienes cuenta? Regístrate gratis</string>
+    <string name="signup">Sign Up</string>
+</resources>
