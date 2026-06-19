@@ -31,15 +31,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dsm.miprofeenlinea.R
-
-// COLORES
-val PrimaryBlue = Color(0xFF2563EB)
-val SecondaryBlue = Color(0xFF1E3A8A)
-val LightBlue = Color(0xFFDBEAFE)
-val White = Color(0xFFFFFFFF)
-val DarkText = Color(0xFF111827)
-val GrayText = Color(0xFF6B7280)
-val SoftBlue = Color(0xFF93C5FD)
+import com.dsm.miprofeenlinea.ui.theme.DarkText
+import com.dsm.miprofeenlinea.ui.theme.GrayText
+import com.dsm.miprofeenlinea.ui.theme.LightBlue
+import com.dsm.miprofeenlinea.ui.theme.PrimaryBlue
+import com.dsm.miprofeenlinea.ui.theme.SecondaryBlue
+import com.dsm.miprofeenlinea.ui.theme.SoftBlue
+import com.dsm.miprofeenlinea.ui.theme.White
 
 @Preview(showBackground = true)
 @Composable

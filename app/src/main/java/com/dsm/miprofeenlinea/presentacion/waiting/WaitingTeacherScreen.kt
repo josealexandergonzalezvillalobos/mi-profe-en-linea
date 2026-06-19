@@ -3,9 +3,11 @@ package com.dsm.miprofeenlinea.presentacion.waiting
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,13 +31,18 @@ val GrayText = Color(0xFF6B7280)
 @Composable
 fun WaitingTeacherScreen(
     taskId: String,
-    navigateToChat: () -> Unit = {}
+    navigateToChat: (String) -> Unit = {}
 ) {
 
     // CONTADOR
     var seconds by remember {
         mutableStateOf(0)
     }
+
+    var tarifa by remember { mutableStateOf<Double?>(null) }
+    var docenteNombre by remember { mutableStateOf("") }
+    var tiempoOferta by remember { mutableStateOf(10) }
+    var mostrarOferta by remember { mutableStateOf(false) }
 
     // TIMER
     LaunchedEffect(Unit) {
@@ -56,17 +63,49 @@ fun WaitingTeacherScreen(
             .document(taskId)
             .addSnapshotListener { snapshot, _ ->
 
-                if (snapshot != null) {
+                if (snapshot == null || !snapshot.exists()) return@addSnapshotListener
 
-                    val estado =
-                        snapshot.getString("estado")
+                val estado = snapshot.getString("estado") ?: ""
 
-                    if (estado == "aceptado") {
+                if (estado == "aceptado") {
+                    navigateToChat(taskId)
+                }
 
-                        navigateToChat()
-                    }
+                if (estado == "tarifa_propuesta") {
+
+                    tarifa = snapshot.getDouble("tarifa")
+
+                    docenteNombre =
+                        snapshot.getString("docenteNombre")
+                            ?: "Docente"
+
+                    mostrarOferta = true
+                }
+
+                if (
+                    estado == "pendiente" ||
+                    estado == "expirada"
+                ) {
+                    mostrarOferta = false
                 }
             }
+    }
+
+    LaunchedEffect(mostrarOferta) {
+
+        if (mostrarOferta) {
+
+            tiempoOferta = 10
+
+            while (tiempoOferta > 0) {
+
+                delay(1000)
+
+                tiempoOferta--
+            }
+
+            mostrarOferta = false
+        }
     }
 
     // FORMATO MINUTOS Y SEGUNDOS
@@ -156,6 +195,112 @@ fun WaitingTeacherScreen(
                     color = GrayText,
                     fontSize = 16.sp
                 )
+
+                if (mostrarOferta) {
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFFFFF8E1)
+                        )
+                    ) {
+
+                        Column(
+                            modifier = Modifier.padding(20.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+
+                            Text(
+                                text = "📢 Oferta recibida",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = "Docente: $docenteNombre"
+                            )
+
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            Text(
+                                text = "Monto: S/ $tarifa",
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = PrimaryBlue
+                            )
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
+                            Text(
+                                text = "⏳ Expira en ${tiempoOferta}s",
+                                color = Color.Red,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+
+                                Button(
+                                    onClick = {
+
+                                        val db = FirebaseFirestore.getInstance()
+
+                                        db.collection("tareas")
+                                            .document(taskId)
+                                            .update(
+                                                mapOf(
+                                                    "estado" to "aceptado"
+                                                )
+                                            )
+                                            .addOnSuccessListener {
+
+                                                // 👉 CREAR CHAT
+                                                db.collection("chats")
+                                                    .document(taskId)
+                                                    .set(
+                                                        mapOf(
+                                                            "taskId" to taskId,
+                                                            "createdAt" to System.currentTimeMillis()
+                                                        )
+                                                    )
+
+                                                navigateToChat(taskId)
+                                            }
+                                    }
+                                ) {
+                                    Text("Aceptar")
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+
+                                        FirebaseFirestore.getInstance()
+                                            .collection("tareas")
+                                            .document(taskId)
+                                            .update(
+                                                mapOf(
+                                                    "estado" to "pendiente",
+                                                    "tarifa" to null
+                                                )
+                                            )
+
+                                        mostrarOferta = false
+                                    }
+                                ) {
+                                    Text("Rechazar")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

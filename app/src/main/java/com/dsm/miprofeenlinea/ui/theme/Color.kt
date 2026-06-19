@@ -17,6 +17,8 @@ val White = Color(0xFFFFFFFF)
 val DarkText = Color(0xFF111827)
 val GrayText = Color(0xFF6B7280)
 
+val SoftBlue = Color(0xFF93C5FD)
+
 //aplicable al proyecto
 val Gray = Color(0xFFE7E7E7)
 val Black = Color(0xFF121212)

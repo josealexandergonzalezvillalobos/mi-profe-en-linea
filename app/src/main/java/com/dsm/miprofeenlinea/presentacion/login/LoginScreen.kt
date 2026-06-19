@@ -34,25 +34,28 @@ import androidx.compose.ui.unit.sp
 import com.dsm.miprofeenlinea.R
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
-// COLORES
-val PrimaryBlue = Color(0xFF2563EB)
-val SecondaryBlue = Color(0xFF1E3A8A)
-val LightBlue = Color(0xFFDBEAFE)
-val White = Color(0xFFFFFFFF)
-val DarkText = Color(0xFF111827)
-val GrayText = Color(0xFF6B7280)
+import com.dsm.miprofeenlinea.ui.theme.DarkText
+import com.dsm.miprofeenlinea.ui.theme.GrayText
+import com.dsm.miprofeenlinea.ui.theme.LightBlue
+import com.dsm.miprofeenlinea.ui.theme.PrimaryBlue
+import com.dsm.miprofeenlinea.ui.theme.SecondaryBlue
+import com.dsm.miprofeenlinea.ui.theme.White
+import com.google.firebase.firestore.FirebaseFirestore
 
 @Composable
 fun LoginScreen(
     auth: FirebaseAuth,
     navigateToSignUp: () -> Unit = {},
-    navigateToHome: () -> Unit = {}
+    navigateToHome: () -> Unit = {},
+    navigateToHomeDocente: () -> Unit = {}
 ) {
 
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    val db = FirebaseFirestore.getInstance()
 
     Box(
         modifier = Modifier
@@ -248,7 +251,34 @@ fun LoginScreen(
                                             "Login correcto: ${user?.email}"
                                         )
 
-                                        navigateToHome()
+                                        val uid = user?.uid ?: ""
+
+                                        db.collection("usuarios")
+                                            .document(uid)
+                                            .get()
+                                            .addOnSuccessListener { document ->
+
+                                                val modo = document.getString("modo") ?: ""
+
+                                                Log.d("FIRESTORE", "Modo: $modo")
+
+                                                if (modo == "Docente") {
+
+                                                    navigateToHomeDocente()
+
+                                                } else {
+
+                                                    navigateToHome()
+                                                }
+                                            }
+                                            .addOnFailureListener {
+
+                                                Toast.makeText(
+                                                    context,
+                                                    "No se pudo verificar el perfil",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+                                            }
 
                                     } else {
                                         Toast.makeText(

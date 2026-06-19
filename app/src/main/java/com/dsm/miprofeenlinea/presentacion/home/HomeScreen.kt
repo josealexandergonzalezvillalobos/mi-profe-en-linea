@@ -1,5 +1,6 @@
 package com.dsm.miprofeenlinea.presentacion.home
 
+import HomeViewModel
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -21,6 +22,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,41 +47,24 @@ import com.dsm.miprofeenlinea.ui.theme.SecondaryBlue
 import com.dsm.miprofeenlinea.ui.theme.White
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import java.io.File
-import java.io.FileOutputStream
 import java.util.UUID
-
-// FUNCION PARA CONVERTIR BITMAP A URI
-fun bitmapToUri(
-    context: Context,
-    bitmap: Bitmap
-): Uri {
-
-    val file = File(
-        context.cacheDir,
-        "${UUID.randomUUID()}.jpg"
-    )
-
-    val outputStream = FileOutputStream(file)
-
-    bitmap.compress(
-        Bitmap.CompressFormat.JPEG,
-        100,
-        outputStream
-    )
-
-    outputStream.flush()
-    outputStream.close()
-
-    return Uri.fromFile(file)
-}
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.dsm.miprofeenlinea.model.Tarea
+import com.dsm.miprofeenlinea.utils.bitmapToUri
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun HomeScreen(
-    onRequestTeacherClick: (String) -> Unit = {}
+    onRequestTeacherClick: (String) -> Unit = {},
+    onGoToCharts: () -> Unit = {}, // agregamos un callback
+    viewModel: HomeViewModel = viewModel()
 ) {
-
     val context = LocalContext.current
+
+    var tareas by remember { mutableStateOf(listOf<Tarea>()) }
+    var countdownMap by remember { mutableStateOf(mapOf<String, Int>()) }
+    val scope = rememberCoroutineScope()
 
     // VARIABLE PARA FOTO
     var imageBitmap by remember {
@@ -96,6 +81,147 @@ fun HomeScreen(
                 imageBitmap = bitmap
             }
         }
+
+    LaunchedEffect(Unit) {
+        viewModel.escucharTareas { lista ->
+            tareas = lista
+        }
+    }
+
+    val ofertasActivas = tareas.filter {
+        it.estado == "tarifa_propuesta"
+    }
+
+    fun startCountdown(tarea: Tarea) {
+
+        if (countdownMap.containsKey(tarea.id)) return
+
+        scope.launch {
+
+            var time = 10
+
+            countdownMap = countdownMap + (tarea.id to time)
+
+            while (time > 0) {
+                delay(1000)
+                time--
+
+                countdownMap = countdownMap.toMutableMap().apply {
+                    put(tarea.id, time)
+                }
+            }
+
+            // ⛔ expira
+            countdownMap = countdownMap - tarea.id
+
+            FirebaseFirestore.getInstance()
+                .collection("tareas")
+                .document(tarea.id)
+                .update(
+                    mapOf(
+                        "estado" to "expirada"
+                    )
+                )
+        }
+    }
+
+    ofertasActivas.forEach { tarea ->
+
+        val countdown = countdownMap[tarea.id]
+
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF8E1)),
+            elevation = CardDefaults.cardElevation(10.dp)
+        ) {
+
+            Column(modifier = Modifier.padding(16.dp)) {
+
+                Text(
+                    text = "📢 Oferta de docente",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp,
+                    color = Color(0xFFFF6F00)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Docente: ${tarea.docenteNombre}",
+                    fontSize = 14.sp
+                )
+
+                Text(
+                    text = "Monto propuesto: S/ ${tarea.tarifa}",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = PrimaryBlue
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                if (countdown != null) {
+                    Text(
+                        text = "⏳ Expira en ${countdown}s",
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+
+                    Button(
+                        onClick = {
+
+                            FirebaseFirestore.getInstance()
+                                .collection("tareas")
+                                .document(tarea.id)
+                                .update(
+                                    mapOf(
+                                        "estado" to "aceptado"
+                                    )
+                                )
+
+                            // 👉 aquí luego navegas al chat
+                            Toast.makeText(context, "Abriendo chat...", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(PrimaryBlue)
+                    ) {
+                        Text("Aceptar")
+                    }
+
+                    OutlinedButton(
+                        onClick = {
+                            FirebaseFirestore.getInstance()
+                                .collection("tareas")
+                                .document(tarea.id)
+                                .update(
+                                    mapOf(
+                                        "estado" to "pendiente",
+                                        "tarifa" to null
+                                    )
+                                )
+                        }
+                    ) {
+                        Text("Rechazar")
+                    }
+                }
+
+                // 🚀 iniciar countdown automático
+                LaunchedEffect(tarea.id) {
+                    startCountdown(tarea)
+                }
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -150,6 +276,15 @@ fun HomeScreen(
             )
 
             Spacer(modifier = Modifier.height(40.dp))
+
+            Button(
+                onClick = {
+                    onGoToCharts()
+                },
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text("Ver estadísticas")
+            }
 
             // CARD FOTO
             Card(
@@ -281,11 +416,9 @@ fun HomeScreen(
                             imageBitmap!!
                         )
 
-                    val fileName =
-                        "tareas/${UUID.randomUUID()}.jpg"
+                    val fileName = "tareas/${UUID.randomUUID()}.jpg"
 
-                    val storageRef =
-                        storage.reference.child(fileName)
+                    val storageRef = storage.reference.child(fileName)
 
                     // SUBIR IMAGEN
                     storageRef.putFile(imageUri)
@@ -296,17 +429,14 @@ fun HomeScreen(
                                 .addOnSuccessListener { downloadUrl ->
 
                                     // DATOS FIRESTORE
-                                    val data = hashMapOf(
-                                        "imagen" to downloadUrl.toString(),
-                                        "fecha" to System.currentTimeMillis(),
-                                        "estado" to "pendiente"
+                                    val tarea = Tarea(
+                                        imagen = downloadUrl.toString(),
+                                        estado = "pendiente"
                                     )
 
-                                    // GUARDAR EN FIRESTORE
-                                    firestore.collection("tareas")
-                                        .add(data)
-                                        .addOnSuccessListener { document ->
-                                            val taskId = document.id
+                                    viewModel.guardarTarea(
+                                        tarea = tarea,
+                                        onSuccess = { taskId ->
 
                                             Toast.makeText(
                                                 context,
@@ -315,8 +445,8 @@ fun HomeScreen(
                                             ).show()
 
                                             onRequestTeacherClick(taskId)
-                                        }
-                                        .addOnFailureListener {
+                                        },
+                                        onError = {
 
                                             Toast.makeText(
                                                 context,
@@ -324,6 +454,7 @@ fun HomeScreen(
                                                 Toast.LENGTH_LONG
                                             ).show()
                                         }
+                                    )
                                 }
                         }
                         .addOnFailureListener {

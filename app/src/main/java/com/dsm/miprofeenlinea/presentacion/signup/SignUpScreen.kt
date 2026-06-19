@@ -29,15 +29,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.dsm.miprofeenlinea.R
+import com.dsm.miprofeenlinea.ui.theme.DarkText
+import com.dsm.miprofeenlinea.ui.theme.GrayText
+import com.dsm.miprofeenlinea.ui.theme.LightBlue
+import com.dsm.miprofeenlinea.ui.theme.PrimaryBlue
+import com.dsm.miprofeenlinea.ui.theme.SecondaryBlue
+import com.dsm.miprofeenlinea.ui.theme.SoftBlue
+import com.dsm.miprofeenlinea.ui.theme.White
+import com.google.firebase.firestore.FirebaseFirestore
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
-// COLORES
-val PrimaryBlue = Color(0xFF2563EB)
-val SecondaryBlue = Color(0xFF1E3A8A)
-val LightBlue = Color(0xFFDBEAFE)
-val White = Color(0xFFFFFFFF)
-val DarkText = Color(0xFF111827)
-val GrayText = Color(0xFF6B7280)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(auth: FirebaseAuth) {
 
@@ -45,6 +51,13 @@ fun SignUpScreen(auth: FirebaseAuth) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var nombres by remember { mutableStateOf("") }
+
+    val opcionesModo = listOf("Estudiante", "Docente")
+    var modoSeleccionado by remember { mutableStateOf(opcionesModo[0]) }
+    var expanded by remember { mutableStateOf(false) }
+
+    val db = FirebaseFirestore.getInstance()
 
     Box(
         modifier = Modifier
@@ -60,9 +73,12 @@ fun SignUpScreen(auth: FirebaseAuth) {
             )
     ) {
 
+        val scrollState = rememberScrollState()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(scrollState)
                 .padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -121,6 +137,89 @@ fun SignUpScreen(auth: FirebaseAuth) {
                         .fillMaxWidth()
                         .padding(24.dp)
                 ) {
+
+                    Text(
+                        text = "Apellidos y Nombres",
+                        color = DarkText,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = nombres,
+                        onValueChange = { nombres = it },
+                        placeholder = {
+                            Text(
+                                text = "Ingrese sus apellidos y nombres",
+                                color = GrayText
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(16.dp),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PrimaryBlue,
+                            unfocusedBorderColor = Color(0xFFD1D5DB),
+                            focusedTextColor = DarkText,
+                            unfocusedTextColor = DarkText,
+                            cursorColor = PrimaryBlue
+                        )
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Modalidad",
+                        color = DarkText,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
+                    ) {
+
+                        OutlinedTextField(
+                            value = modoSeleccionado,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(
+                                    expanded = expanded
+                                )
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = PrimaryBlue,
+                                unfocusedBorderColor = Color(0xFFD1D5DB)
+                            )
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+
+                            opcionesModo.forEach { opcion ->
+
+                                DropdownMenuItem(
+                                    text = { Text(opcion) },
+                                    onClick = {
+                                        modoSeleccionado = opcion
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     Text(
                         text = "Correo electrónico",
@@ -225,18 +324,40 @@ fun SignUpScreen(auth: FirebaseAuth) {
                                     if (task.isSuccessful) {
 
                                         val user = task.result?.user
+                                        val uid = user?.uid ?: ""
 
-                                        Log.d(
-                                            "AUTH",
-                                            "Usuario creado: ${user?.email}"
+                                        val datosUsuario = hashMapOf(
+                                            "uid" to uid,
+                                            "nombres" to nombres,
+                                            "email" to email,
+                                            "modo" to modoSeleccionado,
+                                            "fechaRegistro" to System.currentTimeMillis()
                                         )
 
-                                        Toast.makeText(
-                                            context,
-                                            "Usuario creado: ${user?.email}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
+                                        db.collection("usuarios")
+                                            .document(uid)
+                                            .set(datosUsuario)
+                                            .addOnSuccessListener {
 
+                                                Toast.makeText(
+                                                    context,
+                                                    "Usuario registrado correctamente",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+
+                                                Log.d("FIRESTORE", "Usuario guardado")
+
+                                            }
+                                            .addOnFailureListener { e ->
+
+                                                Toast.makeText(
+                                                    context,
+                                                    "Usuario creado pero no guardado en Firestore",
+                                                    Toast.LENGTH_LONG
+                                                ).show()
+
+                                                Log.e("FIRESTORE", e.message ?: "")
+                                            }
                                     } else {
 
                                         Toast.makeText(

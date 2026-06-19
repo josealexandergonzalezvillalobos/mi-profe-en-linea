@@ -1,251 +1,252 @@
 package com.dsm.miprofeenlinea.presentacion.chat
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
-// COLORES
-val PrimaryBlue = Color(0xFF2563EB)
-val SecondaryBlue = Color(0xFF1E3A8A)
-val LightBlue = Color(0xFFDBEAFE)
-val White = Color(0xFFFFFFFF)
-val GrayText = Color(0xFF6B7280)
-val DarkText = Color(0xFF111827)
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.dsm.miprofeenlinea.ui.theme.*
 
 @Composable
-fun ChatScreen() {
+fun ChatScreen(
+    taskId: String,
+    currentUserRole: String,
+    onGoToRating: (String,Boolean) -> Unit
+) {
 
-    var message by remember {
-        mutableStateOf("")
+    val db = FirebaseFirestore.getInstance()
+    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid
+
+    var message by remember { mutableStateOf("") }
+
+    val messages = remember { mutableStateListOf<Map<String, Any>>() }
+
+    var navigatedToRating by remember { mutableStateOf(false) }
+
+    // ---------------------------
+    // MENSAJES EN TIEMPO REAL
+    // ---------------------------
+    LaunchedEffect(taskId) {
+
+        db.collection("chats")
+            .document(taskId)
+            .collection("messages")
+            .orderBy("timestamp")
+            .addSnapshotListener { snapshot, _ ->
+
+                if (snapshot == null) return@addSnapshotListener
+
+                messages.clear()
+
+                for (doc in snapshot.documents) {
+                    messages.add(doc.data ?: emptyMap())
+                }
+            }
     }
 
-    val messages = remember {
+    // ---------------------------
+    // DETECTAR FINALIZACIÓN CHAT
+    // ---------------------------
+    LaunchedEffect(taskId) {
 
-        mutableStateListOf(
-            "Docente: Hola 👋",
-            "Docente: Estoy revisando tu tarea.",
-            "Docente: En unos minutos te ayudaré con el ejercicio."
-        )
+        db.collection("chats")
+            .document(taskId)
+            .addSnapshotListener { snapshot, _ ->
+
+                val estado = snapshot?.getString("estado")
+
+                if (estado == "finalizado" && !navigatedToRating) {
+                    navigatedToRating = true
+                    onGoToRating(taskId, currentUserRole == "docente")
+                }
+            }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        LightBlue,
-                        White,
-                        Color(0xFFF8FAFC)
-                    )
-                )
-            )
-    ) {
+    val sentColor = Color(0xFF2563EB)
+    val receivedColor = Color(0xFFE5E7EB)
 
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
+    Box(modifier = Modifier.fillMaxSize()) {
 
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // ---------------------------
             // HEADER
+            // ---------------------------
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = PrimaryBlue
-                ),
-                shape = RoundedCornerShape(
-                    bottomStart = 30.dp,
-                    bottomEnd = 30.dp
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 8.dp
-                )
+                colors = CardDefaults.cardColors(containerColor = PrimaryBlue),
+                shape = RoundedCornerShape(bottomStart = 30.dp, bottomEnd = 30.dp)
             ) {
 
-                Column(
-                    modifier = Modifier.padding(
-                        top = 52.dp,
-                        bottom = 24.dp,
-                        start = 24.dp,
-                        end = 24.dp
-                    )
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
 
-                    Text(
-                        text = "Chat con Docente",
-                        color = White,
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    Column {
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Chat",
+                            color = White,
+                            fontSize = 26.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                        )
 
-                    Text(
-                        text = "Docente conectado ●",
-                        color = White.copy(alpha = 0.85f),
-                        fontSize = 15.sp
-                    )
+                        Text(
+                            text = "Tarea: $taskId",
+                            color = White.copy(alpha = 0.8f),
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    // ---------------------------
+                    // BOTÓN FINALIZAR CHAT
+                    // ---------------------------
+                    IconButton(
+                        onClick = {
+
+                            if (navigatedToRating) return@IconButton
+
+                            db.collection("chats")
+                                .document(taskId)
+                                .update(
+                                    mapOf(
+                                        "estado" to "finalizado",
+                                        "finalizadoAt" to System.currentTimeMillis()
+                                    )
+                                )
+                                .addOnSuccessListener {
+                                    navigatedToRating = true
+                                    onGoToRating(taskId, currentUserRole == "docente")
+                                }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CheckCircle,
+                            contentDescription = "Finalizar chat",
+                            tint = Color.White
+                        )
+                    }
                 }
             }
 
+            // ---------------------------
             // MENSAJES
+            // ---------------------------
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(
-                    top = 20.dp,
-                    bottom = 20.dp
-                )
+                    .padding(horizontal = 12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
 
                 items(messages) { msg ->
 
-                    val isTeacher =
-                        msg.startsWith("Docente")
+                    val text = msg["text"] as? String ?: ""
+                    val senderId = msg["senderId"] as? String ?: ""
+
+                    val isMe = senderId == currentUserId
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement =
-                            if (isTeacher)
-                                Arrangement.Start
-                            else
-                                Arrangement.End
+                            if (isMe) Arrangement.End else Arrangement.Start
                     ) {
 
                         Card(
-                            shape = RoundedCornerShape(20.dp),
+                            shape = RoundedCornerShape(18.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor =
-                                    if (isTeacher)
-                                        White
-                                    else
-                                        PrimaryBlue
+                                containerColor = if (isMe) sentColor else receivedColor
                             ),
-                            elevation = CardDefaults.cardElevation(
-                                defaultElevation = 4.dp
-                            ),
-                            modifier = Modifier.widthIn(max = 300.dp)
+                            elevation = CardDefaults.cardElevation(4.dp),
+                            modifier = Modifier.widthIn(max = 280.dp)
                         ) {
 
                             Text(
-                                text = msg,
-                                modifier = Modifier.padding(
-                                    horizontal = 18.dp,
-                                    vertical = 14.dp
-                                ),
-                                color =
-                                    if (isTeacher)
-                                        DarkText
-                                    else
-                                        White,
-                                fontSize = 16.sp
+                                text = text,
+                                modifier = Modifier.padding(12.dp),
+                                color = if (isMe) Color.White else Color(0xFF111827),
+                                fontSize = 15.sp
                             )
                         }
                     }
                 }
             }
 
-            // AREA INPUT
+            // ---------------------------
+            // INPUT
+            // ---------------------------
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(
-                        start = 14.dp,
-                        end = 14.dp,
-                        bottom = 18.dp
-                    ),
-                shape = RoundedCornerShape(26.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = White
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 8.dp
-                )
+                    .padding(12.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = White),
+                elevation = CardDefaults.cardElevation(8.dp)
             ) {
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            horizontal = 12.dp,
-                            vertical = 10.dp
-                        ),
+                        .padding(10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
 
                     OutlinedTextField(
                         value = message,
-                        onValueChange = {
-                            message = it
-                        },
+                        onValueChange = { message = it },
                         modifier = Modifier.weight(1f),
-                        placeholder = {
-                            Text(
-                                text = "Escribe un mensaje...",
-                                color = GrayText
-                            )
-                        },
-                        shape = RoundedCornerShape(18.dp),
-                        maxLines = 4,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = PrimaryBlue,
-                            unfocusedBorderColor = Color(0xFFD1D5DB),
-                            focusedTextColor = DarkText,
-                            unfocusedTextColor = DarkText,
-                            cursorColor = PrimaryBlue
-                        )
+                        placeholder = { Text("Escribe un mensaje...") },
+                        shape = RoundedCornerShape(16.dp),
+                        maxLines = 3
                     )
 
-                    Spacer(modifier = Modifier.width(10.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
                     FloatingActionButton(
                         onClick = {
 
-                            if (message.isNotEmpty()) {
+                            if (message.isBlank() || currentUserId == null) return@FloatingActionButton
 
-                                messages.add(
-                                    "Alumno: $message"
-                                )
+                            val msg = hashMapOf(
+                                "text" to message,
+                                "senderId" to currentUserId,
+                                "timestamp" to System.currentTimeMillis()
+                            )
 
-                                message = ""
-                            }
+                            db.collection("chats")
+                                .document(taskId)
+                                .collection("messages")
+                                .add(msg)
+
+                            message = ""
                         },
                         containerColor = PrimaryBlue
                     ) {
-
                         Icon(
                             imageVector = Icons.Default.Send,
-                            contentDescription = "",
+                            contentDescription = null,
                             tint = White
                         )
                     }
                 }
             }
-
-            // ESPACIO EXTRA PARA NO CHOCAR
-            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }
