@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.School
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -58,7 +59,8 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onRequestTeacherClick: (String) -> Unit = {},
     onGoToCharts: () -> Unit = {}, // agregamos un callback
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    onChatIAClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -485,6 +487,37 @@ fun HomeScreen(
 
                 Text(
                     text = "Solicitar Docente",
+                    color = White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    onChatIAClick()
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryBlue
+                )
+            ) {
+
+                Icon(
+                    imageVector = Icons.Default.SmartToy,
+                    contentDescription = "Tutor IA",
+                    tint = White
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Text(
+                    text = "Consulta a la IA",
                     color = White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 18.sp

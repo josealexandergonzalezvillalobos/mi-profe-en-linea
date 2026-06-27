@@ -14,6 +14,7 @@ import com.dsm.miprofeenlinea.presentacion.chat.ChatScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.dsm.miprofeenlinea.presentacion.home.HomeDocenteScreen
 import com.dsm.miprofeenlinea.presentacion.rating.RatingScreen
+import com.dsm.miprofeenlinea.presentacion.chat_ia.ChatIAScreen
 
 @Composable
 fun NavigationWrapper(
@@ -54,6 +55,9 @@ fun NavigationWrapper(
                 },
                 onRequestTeacherClick = { taskId ->
                     navHostController.navigate("waitingTeacher/$taskId")
+                },
+                onChatIAClick = {
+                    navHostController.navigate("chatIA")
                 }
             )
         }
@@ -113,6 +117,14 @@ fun NavigationWrapper(
 
         composable("charts") {
             ChartScreen()
+        }
+
+        composable("chatIA") {
+            ChatIAScreen(
+                onContactProfessor = {
+                    navHostController.navigate("home")
+                }
+            )
         }
     }
 }
