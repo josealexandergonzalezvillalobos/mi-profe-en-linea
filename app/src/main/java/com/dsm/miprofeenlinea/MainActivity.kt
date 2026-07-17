@@ -9,6 +9,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
+import com.dsm.miprofeenlinea.data.local.SessionManager
 import com.dsm.miprofeenlinea.navigation.NavigationWrapper
 import com.dsm.miprofeenlinea.ui.theme.FirebaseAuthTheme
 import com.google.firebase.Firebase
@@ -19,6 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val auth = Firebase.auth
+        val sessionManager = SessionManager(this)
         setContent {
             val navHostController = rememberNavController()
             FirebaseAuthTheme {
@@ -26,7 +28,16 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NavigationWrapper(navHostController, auth)
+                    NavigationWrapper(
+                        navHostController = navHostController,
+                        auth = auth,
+                        startDestination = when {
+                            auth.currentUser == null -> "initial"
+                            sessionManager.getRole() == "docente" -> "homeDocente"
+                            sessionManager.getRole() == "alumno" -> "home"
+                            else -> "initial"
+                        }
+                    )
                 }
             }
         }

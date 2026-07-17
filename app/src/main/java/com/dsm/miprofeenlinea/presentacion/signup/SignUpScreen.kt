@@ -42,12 +42,14 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.dsm.miprofeenlinea.data.local.SessionManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SignUpScreen(auth: FirebaseAuth) {
 
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -338,6 +340,11 @@ fun SignUpScreen(auth: FirebaseAuth) {
                                             .document(uid)
                                             .set(datosUsuario)
                                             .addOnSuccessListener {
+                                                sessionManager.saveSession(
+                                                    uid = uid,
+                                                    email = email,
+                                                    modo = modoSeleccionado
+                                                )
 
                                                 Toast.makeText(
                                                     context,

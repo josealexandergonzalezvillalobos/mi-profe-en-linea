@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.dsm.miprofeenlinea.R
 import com.google.firebase.auth.FirebaseAuth
 import androidx.compose.ui.platform.LocalContext
+import com.dsm.miprofeenlinea.data.local.SessionManager
 import com.dsm.miprofeenlinea.ui.theme.DarkText
 import com.dsm.miprofeenlinea.ui.theme.GrayText
 import com.dsm.miprofeenlinea.ui.theme.LightBlue
@@ -54,6 +55,7 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
 
     val db = FirebaseFirestore.getInstance()
 
@@ -259,6 +261,11 @@ fun LoginScreen(
                                             .addOnSuccessListener { document ->
 
                                                 val modo = document.getString("modo") ?: ""
+                                                sessionManager.saveSession(
+                                                    uid = uid,
+                                                    email = user?.email,
+                                                    modo = modo
+                                                )
 
                                                 Log.d("FIRESTORE", "Modo: $modo")
 

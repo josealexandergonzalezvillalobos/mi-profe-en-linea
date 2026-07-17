@@ -51,6 +51,7 @@ import java.util.UUID
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dsm.miprofeenlinea.model.Tarea
 import com.dsm.miprofeenlinea.utils.bitmapToUri
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -58,6 +59,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     onRequestTeacherClick: (String) -> Unit = {},
     onGoToCharts: () -> Unit = {}, // agregamos un callback
+    onGoToProfile: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val context = LocalContext.current
@@ -84,7 +86,8 @@ fun HomeScreen(
 
     LaunchedEffect(Unit) {
         viewModel.escucharTareas { lista ->
-            tareas = lista
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
+            tareas = lista.filter { it.alumnoId == currentUserId }
         }
     }
 
@@ -119,7 +122,8 @@ fun HomeScreen(
                 .document(tarea.id)
                 .update(
                     mapOf(
-                        "estado" to "expirada"
+                        "estado" to "expirada",
+                        "cancelledAt" to System.currentTimeMillis()
                     )
                 )
         }
@@ -186,7 +190,8 @@ fun HomeScreen(
                                 .document(tarea.id)
                                 .update(
                                     mapOf(
-                                        "estado" to "aceptado"
+                                        "estado" to "aceptado",
+                                        "acceptedAt" to System.currentTimeMillis()
                                     )
                                 )
 
@@ -206,7 +211,10 @@ fun HomeScreen(
                                 .update(
                                     mapOf(
                                         "estado" to "pendiente",
-                                        "tarifa" to null
+                                        "tarifa" to null,
+                                        "docenteId" to "",
+                                        "docenteNombre" to "",
+                                        "tarifaTimestamp" to null
                                     )
                                 )
                         }
@@ -284,6 +292,13 @@ fun HomeScreen(
                 modifier = Modifier.padding(16.dp)
             ) {
                 Text("Ver estadísticas")
+            }
+
+            OutlinedButton(
+                onClick = onGoToProfile,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text("Mi perfil")
             }
 
             // CARD FOTO
@@ -431,7 +446,9 @@ fun HomeScreen(
                                     // DATOS FIRESTORE
                                     val tarea = Tarea(
                                         imagen = downloadUrl.toString(),
-                                        estado = "pendiente"
+                                        estado = "pendiente",
+                                        alumnoId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
+                                        createdAt = System.currentTimeMillis()
                                     )
 
                                     viewModel.guardarTarea(

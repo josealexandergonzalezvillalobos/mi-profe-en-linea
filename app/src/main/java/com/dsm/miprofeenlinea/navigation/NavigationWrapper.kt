@@ -13,14 +13,16 @@ import com.dsm.miprofeenlinea.presentacion.waiting.WaitingTeacherScreen
 import com.dsm.miprofeenlinea.presentacion.chat.ChatScreen
 import com.google.firebase.auth.FirebaseAuth
 import com.dsm.miprofeenlinea.presentacion.home.HomeDocenteScreen
+import com.dsm.miprofeenlinea.presentacion.profile.ProfileScreen
 import com.dsm.miprofeenlinea.presentacion.rating.RatingScreen
 
 @Composable
 fun NavigationWrapper(
     navHostController: NavHostController,
-    auth: FirebaseAuth
+    auth: FirebaseAuth,
+    startDestination: String = "initial"
 ) {
-    NavHost(navController = navHostController, startDestination = "initial") {
+    NavHost(navController = navHostController, startDestination = startDestination) {
         composable("initial") {
             InitialScreen(
                 navigateToLogin={navHostController.navigate("logIn")},
@@ -50,7 +52,10 @@ fun NavigationWrapper(
         composable("home") {
             HomeScreen(
                 onGoToCharts = {
-                    navHostController.navigate("charts")
+                    navHostController.navigate("charts/alumno")
+                },
+                onGoToProfile = {
+                    navHostController.navigate("profile")
                 },
                 onRequestTeacherClick = { taskId ->
                     navHostController.navigate("waitingTeacher/$taskId")
@@ -60,8 +65,14 @@ fun NavigationWrapper(
 
         composable("homeDocente") {
             HomeDocenteScreen(
+                onGoToCharts = {
+                    navHostController.navigate("charts/docente")
+                },
+                onGoToProfile = {
+                    navHostController.navigate("profile")
+                },
                 onGoToChat = { taskId ->
-                    navHostController.navigate("chat/$taskId")
+                    navHostController.navigate("chat/$taskId/docente")
                 }
             )
         }
@@ -72,18 +83,19 @@ fun NavigationWrapper(
             WaitingTeacherScreen(
                 taskId = taskId,
                 navigateToChat = { taskId ->
-                    navHostController.navigate("chat/$taskId")
+                    navHostController.navigate("chat/$taskId/alumno")
                 }
             )
         }
 
-        composable("chat/{taskId}") { backStackEntry ->
+        composable("chat/{taskId}/{role}") { backStackEntry ->
 
             val taskId = backStackEntry.arguments?.getString("taskId") ?: ""
+            val role = backStackEntry.arguments?.getString("role") ?: "alumno"
 
             ChatScreen(
                 taskId = taskId,
-                currentUserRole = "alumno",
+                currentUserRole = role,
                 onGoToRating = { id, isTeacher ->
                     navHostController.navigate("rating/$id/$isTeacher")
                 }
@@ -111,8 +123,21 @@ fun NavigationWrapper(
             )
         }
 
-        composable("charts") {
-            ChartScreen()
+        composable("charts/{role}") { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: "alumno"
+            ChartScreen(
+                userId = auth.currentUser?.uid.orEmpty(),
+                role = role,
+                onBack = { navHostController.popBackStack() }
+            )
+        }
+
+        composable("profile") {
+            ProfileScreen(
+                uid = auth.currentUser?.uid.orEmpty(),
+                email = auth.currentUser?.email,
+                onBack = { navHostController.popBackStack() }
+            )
         }
     }
 }

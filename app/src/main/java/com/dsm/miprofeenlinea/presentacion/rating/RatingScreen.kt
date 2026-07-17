@@ -63,6 +63,15 @@ fun RatingScreen(
                         )
                     )
                     .addOnSuccessListener {
+                        db.collection("tareas")
+                            .document(taskId)
+                            .update(
+                                mapOf(
+                                    field to rating,
+                                    "estado" to "finalizado",
+                                    "completedAt" to System.currentTimeMillis()
+                                )
+                            )
 
                         if (isTeacher) {
                             onGoHomeTeacher()

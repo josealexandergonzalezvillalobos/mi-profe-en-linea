@@ -120,16 +120,25 @@ fun ChatScreen(
                         onClick = {
 
                             if (navigatedToRating) return@IconButton
+                            val finishedAt = System.currentTimeMillis()
 
                             db.collection("chats")
                                 .document(taskId)
                                 .update(
                                     mapOf(
                                         "estado" to "finalizado",
-                                        "finalizadoAt" to System.currentTimeMillis()
+                                        "finalizadoAt" to finishedAt
                                     )
                                 )
                                 .addOnSuccessListener {
+                                    db.collection("tareas")
+                                        .document(taskId)
+                                        .update(
+                                            mapOf(
+                                                "estado" to "finalizado",
+                                                "completedAt" to finishedAt
+                                            )
+                                        )
                                     navigatedToRating = true
                                     onGoToRating(taskId, currentUserRole == "docente")
                                 }

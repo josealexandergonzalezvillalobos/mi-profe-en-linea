@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.dsm.miprofeenlinea.model.Tarea
 import com.dsm.miprofeenlinea.ui.theme.*
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,6 +35,8 @@ import kotlinx.coroutines.delay
 @Composable
 fun HomeDocenteScreen(
     viewModel: HomeViewModel = viewModel(),
+    onGoToCharts: () -> Unit = {},
+    onGoToProfile: () -> Unit = {},
     onGoToChat: (String) -> Unit = {}
 ){
 
@@ -53,11 +56,13 @@ fun HomeDocenteScreen(
     // 📡 ESCUCHAR TAREAS
     LaunchedEffect(Unit) {
         viewModel.escucharTareas { lista ->
+            val currentUserId = FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
 
             tareas = lista.filter { tarea ->
                 tarea.estado == "pendiente" ||
-                        tarea.estado == "tarifa_propuesta" ||
-                        tarea.estado == "aceptado"
+                        (tarea.docenteId == currentUserId &&
+                                (tarea.estado == "tarifa_propuesta" ||
+                                        tarea.estado == "aceptado"))
             }
         }
     }
@@ -93,6 +98,8 @@ fun HomeDocenteScreen(
                         "estado" to "pendiente",
                         "tarifa" to null,
                         "docenteNombre" to "",
+                        "docenteId" to "",
+                        "cancelledAt" to System.currentTimeMillis(),
                         "tarifaTimestamp" to null
                     )
                 )
@@ -139,6 +146,25 @@ fun HomeDocenteScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             // 📄 LISTA
+            Button(
+                onClick = onGoToCharts,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(PrimaryBlue)
+            ) {
+                Text("Ver estadisticas")
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedButton(
+                onClick = onGoToProfile,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Mi perfil")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             tareas.forEach { tarea ->
 
                 val countdown = countdownMap[tarea.id]
@@ -220,6 +246,8 @@ fun HomeDocenteScreen(
                                                 "estado" to "pendiente",
                                                 "tarifa" to null,
                                                 "docenteNombre" to "",
+                                                "docenteId" to "",
+                                                "cancelledAt" to System.currentTimeMillis(),
                                                 "tarifaTimestamp" to null
                                             )
                                         )
@@ -313,6 +341,7 @@ fun HomeDocenteScreen(
                                 mapOf(
                                     "tarifa" to tarifa,
                                     "estado" to "tarifa_propuesta",
+                                    "docenteId" to FirebaseAuth.getInstance().currentUser?.uid.orEmpty(),
                                     "docenteNombre" to "Juan Pérez",
                                     "tarifaTimestamp" to System.currentTimeMillis()
                                 )
